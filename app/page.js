@@ -176,11 +176,11 @@ export default function Home() {
   const isProcessing = status === "uploading" || status === "processing";
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 text-slate-800 p-6 font-sans">
+    <main className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50 text-slate-800 p-6 font-sans">
       <div className="max-w-5xl mx-auto">
         {/* Header & Auth */}
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
+          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-linear-to-r from-blue-600 to-indigo-600">
             PDF → Anki Deck
           </h1>
           {user ? (
@@ -324,7 +324,7 @@ export default function Home() {
         <button
           onClick={handleSubmit}
           disabled={!file || isProcessing || !user}
-          className="w-full py-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full py-4 rounded-xl bg-linear-to-r from-blue-600 to-indigo-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {status === "uploading"
             ? "Uploading..."
