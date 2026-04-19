@@ -1,711 +1,430 @@
+// app/page.js
 "use client";
-
-import { useEffect, useMemo, useRef, useState } from "react";
-import { initializeApp, getApps, getApp } from "firebase/app";
-import {
-  getAuth,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
-} from "firebase/auth";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { round } from "firebase/firestore/pipelines";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { app } from "./lib/firebase";
+import Navbar from "../components/NavBar";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  FileUp,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Download,
+  ChevronLeft,
+  ChevronRight,
+  Zap,
+} from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
-
-const hasFirebaseConfig = Object.values(firebaseConfig).every(Boolean);
-const app = hasFirebaseConfig
-  ? getApps().length
-    ? getApp()
-    : initializeApp(firebaseConfig)
-  : null;
-const auth = app ? getAuth(app) : null;
-
-function clampNumber(value, min, max) {
-  const num = Number(value);
-  if (Number.isNaN(num)) return min;
-  return Math.min(max, Math.max(min, num));
-}
-
-export default function Home() {
+export default function HomePage() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [authError, setAuthError] = useState("");
-
   const [file, setFile] = useState(null);
-  const [pageCount, setPageCount] = useState(null);
-  const [pageMode, setPageMode] = useState("all");
-  const [firstN, setFirstN] = useState(5);
-  const [lastN, setLastN] = useState(5);
-  const [customStart, setCustomStart] = useState(1);
-  const [customEnd, setCustomEnd] = useState(1);
-
-  const [status, setStatus] = useState("idle");
-  const [errorMsg, setErrorMsg] = useState("");
+  const [pageCount, setPageCount] = useState(0);
+  const [pageRange, setPageRange] = useState([1, 1]);
+  const [loading, setLoading] = useState(false);
   const [jobId, setJobId] = useState(null);
+  const [jobStatus, setJobStatus] = useState(null);
   const [previewCards, setPreviewCards] = useState([]);
-  const [showPreview, setShowPreview] = useState(false);
-  const [downloadUrl, setDownloadUrl] = useState("");
-
-  const pollRef = useRef(null);
-  const inputRef = useRef(null);
-
+  const [currentCardIndex, setCurrentCardIndex] = useState(0);
+  const [cardFlipped, setCardFlipped] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
 
+  // Auth check
   useEffect(() => {
-    if (!auth) {
-      setAuthLoading(false);
-      setAuthError(
-        "Firebase is not configured. Add all NEXT_PUBLIC_FIREBASE_* values to .env.local.",
-      );
-      return;
-    }
-
+    if (!app) return;
+    const auth = getAuth(app);
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser || null);
-      setAuthError("");
-
-      if (currentUser) {
-        try {
-          const idToken = await currentUser.getIdToken(true);
-          setToken(idToken);
-        } catch {
-          setToken(null);
-          setAuthError("Signed in, but failed to retrieve auth token.");
-        }
-      } else {
-        setToken(null);
+      if (!currentUser) {
+        router.push("/auth");
+        return;
       }
-
-      setAuthLoading(false);
-    });
-
-    getRedirectResult(auth).catch((error) => {
-      setAuthError(getReadableAuthError(error));
-      setAuthLoading(false);
-    });
-
-    return () => {
-      unsubscribe();
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, []);
-
-  const pageRangeText = useMemo(() => {
-    if (!pageCount) return "";
-    const { pageStart, pageEnd } = getPageRange(
-      pageMode,
-      pageCount,
-      firstN,
-      lastN,
-      customStart,
-      customEnd,
-    );
-    return `Pages ${pageStart}-${pageEnd} of ${pageCount}`;
-  }, [pageMode, pageCount, firstN, lastN, customStart, customEnd]);
-
-  async function handleLogin() {
-    if (!auth) {
-      setAuthError(
-        "Firebase auth is unavailable. Check your environment variables.",
-      );
-      return;
-    }
-
-    setAuthError("");
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: "select_account" });
-
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const idToken = await result.user.getIdToken(true);
-      setUser(result.user);
+      setUser(currentUser);
+      const idToken = await currentUser.getIdToken(true);
       setToken(idToken);
-    } catch (error) {
-      const code = error?.code || "";
-      const popupFallbackCodes = [
-        "auth/popup-blocked",
-        "auth/popup-closed-by-user",
-        "auth/cancelled-popup-request",
-        "auth/operation-not-supported-in-this-environment",
-      ];
+    });
+    return () => unsubscribe();
+  }, [router]);
 
-      if (popupFallbackCodes.includes(code)) {
-        try {
-          await signInWithRedirect(auth, provider);
-          return;
-        } catch (redirectError) {
-          setAuthError(getReadableAuthError(redirectError));
-          return;
-        }
-      }
+  // Handle file upload
+  const handleFileChange = async (e) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
 
-      setAuthError(getReadableAuthError(error));
-    }
-  }
-
-  async function handleLogout() {
-    if (!auth) return;
-    try {
-      await auth.signOut();
-      setUser(null);
-      setToken(null);
-    } catch {
-      setAuthError("Failed to sign out cleanly.");
-    }
-  }
-
-  async function handleFileChange(event) {
-    const selected = event.target.files?.[0];
-    if (!selected) return;
-
-    if (selected.type !== "application/pdf") {
-      setErrorMsg("Please select a valid PDF file.");
-      setFile(null);
-      setPageCount(null);
+    if (!selectedFile.name.endsWith(".pdf")) {
+      setError("Please upload a PDF file");
       return;
     }
 
-    resetJobState();
-    setFile(selected);
+    setFile(selectedFile);
+    setError("");
+    setJobId(null);
+    setJobStatus(null);
+    setPreviewCards([]);
 
+    // Get page count
     try {
       const formData = new FormData();
-      formData.append("file", selected);
-
-      const response = await fetch(`${API}/page-count`, {
+      formData.append("file", selectedFile);
+      const res = await fetch(`${API}/page-count`, {
         method: "POST",
         body: formData,
       });
-
-      if (!response.ok) {
-        const message = await safeErrorMessage(
-          response,
-          "Failed to read PDF pages.",
-        );
-        throw new Error(message);
-      }
-
-      const data = await response.json();
-      const count = Number(data.page_count ?? data.pagecount ?? data.pages);
-
-      if (!count || Number.isNaN(count)) {
-        throw new Error("Server did not return a valid page count.");
-      }
-
-      setPageCount(count);
-      setFirstN(Math.min(5, count));
-      setLastN(Math.min(5, count));
-      setCustomStart(1);
-      setCustomEnd(count);
-    } catch (error) {
-      setErrorMsg(error.message || "Failed to read PDF pages.");
-      setPageCount(null);
+      const data = await res.json();
+      setPageCount(data.page_count);
+      setPageRange([1, data.page_count]);
+    } catch (err) {
+      setError("Failed to read PDF");
     }
-  }
+  };
 
-  function resetJobState() {
-    setStatus("idle");
-    setErrorMsg("");
-    setJobId(null);
-    setPreviewCards([]);
-    setShowPreview(false);
-    setDownloadUrl("");
-    if (pollRef.current) clearInterval(pollRef.current);
-  }
+  // Start generation
+  const handleGenerate = async () => {
+    if (!file || !token) return;
 
-  async function handleSubmit() {
-    if (!file) {
-      setErrorMsg("Please choose a PDF first.");
-      return;
-    }
-
-    if (!user || !token) {
-      setErrorMsg("Please sign in before generating the deck.");
-      return;
-    }
-
-    setStatus("uploading");
-    setErrorMsg("");
-    setShowPreview(false);
+    setLoading(true);
+    setError("");
 
     try {
-      const freshToken = await user.getIdToken(true);
-      setToken(freshToken);
-
-      const { pageStart, pageEnd } = getPageRange(
-        pageMode,
-        pageCount,
-        firstN,
-        lastN,
-        customStart,
-        customEnd,
-      );
-
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("page_start", String(pageStart));
-      formData.append("page_end", String(pageEnd));
+      formData.append("page_start", pageRange[0]);
+      formData.append("page_end", pageRange[1]);
 
-      const response = await fetch(`${API}/generate`, {
+      const res = await fetch(`${API}/generate`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${freshToken}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
 
-      if (!response.ok) {
-        const message = await safeErrorMessage(response, "Upload failed.");
-        throw new Error(message);
-      }
-
-      const data = await response.json();
-      const nextJobId = data.job_id ?? data.jobid ?? data.id;
-
-      if (!nextJobId) {
-        throw new Error("Server did not return a job ID.");
-      }
-
-      setJobId(nextJobId);
-      setStatus("processing");
-      startPolling(nextJobId);
-    } catch (error) {
-      setStatus("error");
-      setErrorMsg(error.message || "Failed to start generation.");
+      if (!res.ok) throw new Error("Generation failed");
+      const data = await res.json();
+      setJobId(data.job_id);
+      pollJobStatus(data.job_id);
+    } catch (err) {
+      setError(err.message || "Generation failed");
+      setLoading(false);
     }
-  }
+  };
 
-  function startPolling(id) {
-    if (pollRef.current) clearInterval(pollRef.current);
-
-    let failures = 0;
-
-    pollRef.current = setInterval(async () => {
+  // Poll job status
+  const pollJobStatus = async (id) => {
+    const interval = setInterval(async () => {
       try {
-        const freshToken = user ? await user.getIdToken(true) : token;
-        if (freshToken) setToken(freshToken);
-
-        const response = await fetch(`${API}/status/${id}`, {
-          headers: freshToken
-            ? {
-                Authorization: `Bearer ${freshToken}`,
-              }
-            : {},
+        const res = await fetch(`${API}/status/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
-
-        if (!response.ok) {
-          const message = await safeErrorMessage(
-            response,
-            `Status check failed (${response.status}).`,
-          );
-          throw new Error(message);
-        }
-
-        const data = await response.json();
-        failures = 0;
+        const data = await res.json();
+        setJobStatus(data);
 
         if (data.status === "done") {
-          clearInterval(pollRef.current);
-          pollRef.current = null;
-          setStatus("done");
-          await fetchPreview(id, freshToken || token);
+          clearInterval(interval);
+          setPreviewCards(data.cards_preview || []);
+          setCurrentCardIndex(0);
+          setCardFlipped(false);
+          setLoading(false);
         } else if (data.status === "error") {
-          clearInterval(pollRef.current);
-          pollRef.current = null;
-          setStatus("error");
-          setErrorMsg(data.error || "Generation failed.");
-        } else {
-          setStatus("processing");
+          clearInterval(interval);
+          setError(data.error || "Generation failed");
+          setLoading(false);
         }
-      } catch (error) {
-        failures += 1;
-        if (failures >= 4) {
-          clearInterval(pollRef.current);
-          pollRef.current = null;
-          setStatus("error");
-          setErrorMsg(
-            error.message || "Connection lost while polling job status.",
-          );
-        }
+      } catch (err) {
+        console.error("Poll error:", err);
       }
-    }, 5000);
-  }
+    }, 2000);
+  };
 
-  async function fetchPreview(id, currentToken) {
-    try {
-      const response = await fetch(`${API}/preview/${id}`, {
-        headers: currentToken
-          ? {
-              Authorization: `Bearer ${currentToken}`,
-            }
-          : {},
-      });
-
-      if (!response.ok) {
-        const message = await safeErrorMessage(
-          response,
-          "Failed to load preview.",
-        );
-        throw new Error(message);
-      }
-
-      const data = await response.json();
-      setPreviewCards(Array.isArray(data.cards) ? data.cards : []);
-      setDownloadUrl(data.download_url ?? data.downloadurl ?? "");
-      setShowPreview(true);
-    } catch (error) {
-      setErrorMsg(error.message || "Failed to load preview.");
+  // Card navigation
+  const nextCard = () => {
+    if (currentCardIndex < previewCards.length - 1) {
+      setCurrentCardIndex((i) => i + 1);
+      setCardFlipped(false);
     }
+  };
+
+  const prevCard = () => {
+    if (currentCardIndex > 0) {
+      setCurrentCardIndex((i) => i - 1);
+      setCardFlipped(false);
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
   }
 
-  const isProcessing = status === "uploading" || status === "processing";
+  const currentCard = previewCards[currentCardIndex];
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 text-slate-800 p-6 font-sans">
-      <div className="max-w-5xl mx-auto">
-        <header className="flex flex-col gap-4 md:flex-row md:justify-between md:items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-              PDF Anki Deck
-            </h1>
-            <p className="text-sm text-slate-500 mt-1">
-              Upload a PDF, choose page ranges, and generate an Anki deck.
-            </p>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <Navbar />
 
-          <div>
-            {user ? (
-              <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-full shadow-md">
-                <img
-                  src={user.photoURL || "/default-avatar.png"}
-                  className="w-8 h-8 rounded-full"
-                  alt="User avatar"
-                />
-                <span className="text-sm font-medium">{user.email}</span>
-                <button
-                  onClick={() => router.push("/account")}
-                  className="text-xs text-blue-600 hover:underline"
-                >
-                  My Decks
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="text-xs text-red-500 hover:underline"
-                  type="button"
-                >
-                  Logout
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={handleLogin}
-                className="px-5 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition disabled:opacity-60"
-                disabled={authLoading || !hasFirebaseConfig}
-                type="button"
-              >
-                {authLoading ? "Checking session..." : "Sign in with Google"}
-              </button>
-            )}
-          </div>
-        </header>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Main Grid */}
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Left: Upload & Settings */}
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Create Anki Deck</CardTitle>
+                <CardDescription>
+                  Upload a PDF and generate flashcards using AI
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* File Upload */}
+                <div>
+                  <label className="flex items-center justify-center w-full px-6 py-8 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-blue-400 transition">
+                    <div className="text-center">
+                      <FileUp className="w-8 h-8 mx-auto text-slate-400 mb-2" />
+                      <p className="text-sm font-medium text-slate-700">
+                        Click to upload PDF
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        or drag and drop
+                      </p>
+                    </div>
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
 
-        {(authError || !hasFirebaseConfig) && (
-          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800">
-            {authError || "Firebase configuration is incomplete."}
-          </div>
-        )}
+                {/* File Info */}
+                {file && (
+                  <Alert>
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <AlertDescription>
+                      {file.name} • {pageCount} pages
+                    </AlertDescription>
+                  </Alert>
+                )}
 
-        <section className="sticky top-4 z-10 bg-white/90 backdrop-blur-md rounded-2xl p-5 shadow-lg border border-slate-100 mb-6">
-          <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">
-            Pages to Process
-          </h2>
-
-          <div className="flex flex-wrap gap-3 mb-4">
-            {["all", "first", "last", "custom"].map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setPageMode(mode)}
-                type="button"
-                className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                  pageMode === mode
-                    ? "bg-blue-600 text-white shadow-md scale-105"
-                    : "bg-slate-100 hover:bg-slate-200 text-slate-600"
-                }`}
-              >
-                {mode === "all"
-                  ? "All"
-                  : mode.charAt(0).toUpperCase() + mode.slice(1)}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 text-slate-700">
-            {pageMode === "first" && (
-              <span className="flex items-center gap-2">
-                First
-                <input
-                  type="number"
-                  min="1"
-                  max={pageCount || 1}
-                  value={firstN}
-                  onChange={(e) =>
-                    setFirstN(clampNumber(e.target.value, 1, pageCount || 1))
-                  }
-                  className="w-20 border-2 border-slate-200 rounded-lg px-3 py-2 text-center font-medium focus:border-blue-500 outline-none"
-                />
-                pages
-              </span>
-            )}
-
-            {pageMode === "last" && (
-              <span className="flex items-center gap-2">
-                Last
-                <input
-                  type="number"
-                  min="1"
-                  max={pageCount || 1}
-                  value={lastN}
-                  onChange={(e) =>
-                    setLastN(clampNumber(e.target.value, 1, pageCount || 1))
-                  }
-                  className="w-20 border-2 border-slate-200 rounded-lg px-3 py-2 text-center font-medium focus:border-blue-500 outline-none"
-                />
-                pages
-              </span>
-            )}
-
-            {pageMode === "custom" && (
-              <span className="flex flex-wrap items-center gap-2">
-                Pages
-                <input
-                  type="number"
-                  min="1"
-                  max={pageCount || 1}
-                  value={customStart}
-                  onChange={(e) => {
-                    const nextStart = clampNumber(
-                      e.target.value,
-                      1,
-                      pageCount || 1,
-                    );
-                    setCustomStart(nextStart);
-                    setCustomEnd((prev) => Math.max(nextStart, prev));
-                  }}
-                  className="w-20 border-2 border-slate-200 rounded-lg px-3 py-2 text-center font-medium focus:border-blue-500 outline-none"
-                />
-                to
-                <input
-                  type="number"
-                  min={customStart}
-                  max={pageCount || 1}
-                  value={customEnd}
-                  onChange={(e) =>
-                    setCustomEnd(
-                      clampNumber(e.target.value, customStart, pageCount || 1),
-                    )
-                  }
-                  className="w-20 border-2 border-slate-200 rounded-lg px-3 py-2 text-center font-medium focus:border-blue-500 outline-none"
-                />
-              </span>
-            )}
-
-            {pageCount && (
-              <span className="text-sm text-slate-500">{pageRangeText}</span>
-            )}
-          </div>
-        </section>
-
-        <section
-          onClick={() => !isProcessing && inputRef.current?.click()}
-          className={`border-2 border-dashed rounded-2xl p-10 text-center transition-all cursor-pointer mb-6 ${
-            isProcessing
-              ? "border-slate-200 bg-slate-50 cursor-not-allowed"
-              : "border-blue-200 hover:border-blue-400 hover:bg-blue-50/50"
-          }`}
-        >
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".pdf,application/pdf"
-            className="hidden"
-            onChange={handleFileChange}
-            disabled={isProcessing}
-          />
-
-          {file ? (
-            <div>
-              <p className="text-lg font-semibold">{file.name}</p>
-              <p className="text-slate-500 text-sm mt-1">
-                {(file.size / 1024 / 1024).toFixed(2)} MB{" "}
-                {pageCount ? `• ${pageCount} pages` : ""}
-              </p>
-            </div>
-          ) : (
-            <p className="text-slate-500">
-              Drop a PDF here or click to browse.
-            </p>
-          )}
-        </section>
-
-        <button
-          onClick={handleSubmit}
-          disabled={!file || !user || isProcessing || authLoading}
-          type="button"
-          className="w-full py-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {status === "uploading"
-            ? "Uploading..."
-            : status === "processing"
-              ? "Generating..."
-              : "Generate Anki Deck"}
-        </button>
-
-        {isProcessing && (
-          <div className="mt-6 flex items-center justify-center gap-3 text-blue-600">
-            <div className="animate-spin h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full" />
-            <span>Processing pages...</span>
-          </div>
-        )}
-
-        {status === "done" && showPreview && (
-          <section className="mt-8 bg-white rounded-2xl shadow-xl p-6 border border-slate-100">
-            <div className="flex flex-col gap-3 md:flex-row md:justify-between md:items-center mb-4">
-              <h3 className="text-xl font-bold">
-                Generated Cards Preview ({previewCards.length} shown)
-              </h3>
-              {downloadUrl && (
-                <a
-                  href={downloadUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium shadow text-center"
-                >
-                  Download .apkg
-                </a>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto pr-2">
-              {previewCards.map((card, index) => (
-                <article
-                  key={index}
-                  className="border border-slate-200 rounded-xl p-4 bg-slate-50 hover:shadow-md transition"
-                >
-                  <div className="font-semibold text-blue-700 mb-2">Front</div>
-                  <div>{card.front}</div>
-                  <div className="font-semibold text-emerald-700 mt-4 mb-2 border-t border-slate-200 pt-3">
-                    Back
+                {/* Page Range Selector */}
+                {pageCount > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <label className="text-sm font-medium text-slate-700">
+                        Page Range
+                      </label>
+                      <span className="text-sm text-slate-600">
+                        {pageRange[0]} - {pageRange[1]}
+                      </span>
+                    </div>
+                    <div className="space-y-3">
+                      <Slider
+                        min={1}
+                        max={pageCount}
+                        step={1}
+                        value={[pageRange[0]]}
+                        onValueChange={(val) =>
+                          setPageRange([val[0], pageRange[1]])
+                        }
+                        className="w-full"
+                      />
+                      <Slider
+                        min={1}
+                        max={pageCount}
+                        step={1}
+                        value={[pageRange[1]]}
+                        onValueChange={(val) =>
+                          setPageRange([pageRange[0], val[0]])
+                        }
+                        className="w-full"
+                      />
+                    </div>
                   </div>
-                  <div>{card.back}</div>
-                </article>
-              ))}
-            </div>
-          </section>
-        )}
+                )}
 
-        {status === "error" && (
-          <div className="mt-6 bg-red-50 border border-red-200 rounded-xl p-4 text-red-700">
-            {errorMsg || "Something went wrong."}
+                {/* Error Alert */}
+                {error && (
+                  <Alert className="border-red-200 bg-red-50">
+                    <AlertCircle className="h-4 w-4 text-red-600" />
+                    <AlertDescription className="text-red-700">
+                      {error}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Generate Button */}
+                <Button
+                  onClick={handleGenerate}
+                  disabled={!file || loading || pageRange[0] > pageRange[1]}
+                  className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-4 h-4 mr-2" />
+                      Generate Deck
+                    </>
+                  )}
+                </Button>
+
+                {/* Status */}
+                {jobStatus && (
+                  <div className="p-4 bg-slate-100 rounded-lg">
+                    <div className="text-sm font-medium text-slate-700 mb-2">
+                      Status: {jobStatus.status}
+                    </div>
+                    {jobStatus.card_count && (
+                      <div className="text-sm text-slate-600">
+                        Cards generated: {jobStatus.card_count}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
-        )}
 
-        {!status || status === "idle" ? (
-          errorMsg ? (
-            <div className="mt-6 bg-red-50 border border-red-200 rounded-xl p-4 text-red-700">
-              {errorMsg}
-            </div>
-          ) : null
-        ) : null}
+          {/* Right: Preview */}
+          <div>
+            {previewCards.length > 0 ? (
+              <Card className="overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Preview ({previewCards.length})</CardTitle>
+                      <CardDescription className="text-blue-100">
+                        Card {currentCardIndex + 1} of {previewCards.length}
+                      </CardDescription>
+                    </div>
+                    {jobStatus?.download_url && (
+                      <Button
+                        asChild
+                        size="sm"
+                        variant="secondary"
+                        className="bg-white text-blue-600 hover:bg-blue-50"
+                      >
+                        <a
+                          href={jobStatus.download_url}
+                          download
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Download
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  {/* Flashcard */}
+                  <div
+                    onClick={() => setCardFlipped(!cardFlipped)}
+                    className={`min-h-[300px] rounded-2xl p-8 cursor-pointer transition-all duration-300 ${
+                      cardFlipped
+                        ? "bg-emerald-50 border-2 border-emerald-200"
+                        : "bg-blue-50 border-2 border-blue-200"
+                    } flex flex-col justify-center`}
+                  >
+                    <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
+                      {cardFlipped ? "Answer" : "Question"}
+                    </div>
+                    <div
+                      className="text-lg leading-relaxed text-slate-800 mb-6"
+                      dangerouslySetInnerHTML={{
+                        __html: cardFlipped
+                          ? currentCard.back
+                          : currentCard.front,
+                      }}
+                    />
+                    {currentCard.tags?.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-4">
+                        {currentCard.tags.slice(0, 3).map((tag, i) => (
+                          <Badge key={i} variant="outline">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                    <div className="text-xs text-slate-400 mt-6">
+                      Click to {cardFlipped ? "show question" : "reveal answer"}
+                    </div>
+                  </div>
 
-        {jobId && status === "processing" && (
-          <p className="mt-4 text-center text-sm text-slate-500">
-            Job ID: {jobId}
-          </p>
-        )}
+                  {/* Navigation */}
+                  <div className="flex items-center justify-between mt-6">
+                    <Button
+                      onClick={prevCard}
+                      disabled={currentCardIndex === 0}
+                      variant="outline"
+                    >
+                      <ChevronLeft className="w-4 h-4 mr-2" />
+                      Previous
+                    </Button>
+
+                    <div className="flex gap-1">
+                      {previewCards.map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => {
+                            setCurrentCardIndex(i);
+                            setCardFlipped(false);
+                          }}
+                          className={`w-2 h-2 rounded-full transition ${
+                            i === currentCardIndex
+                              ? "bg-blue-600 scale-110"
+                              : "bg-slate-300"
+                          }`}
+                        />
+                      ))}
+                    </div>
+
+                    <Button
+                      onClick={nextCard}
+                      disabled={currentCardIndex === previewCards.length - 1}
+                    >
+                      Next
+                      <ChevronRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="h-full flex items-center justify-center min-h-[500px]">
+                <CardContent className="text-center">
+                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <FileUp className="w-8 h-8 text-slate-400" />
+                  </div>
+                  <p className="text-slate-600 font-medium">
+                    Upload a PDF to see preview
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
       </div>
-    </main>
+    </div>
   );
-}
-
-function getPageRange(
-  pageMode,
-  pageCount,
-  firstN,
-  lastN,
-  customStart,
-  customEnd,
-) {
-  if (!pageCount) return { pageStart: 1, pageEnd: 1 };
-
-  if (pageMode === "first") {
-    return {
-      pageStart: 1,
-      pageEnd: Math.min(firstN, pageCount),
-    };
-  }
-
-  if (pageMode === "last") {
-    return {
-      pageStart: Math.max(1, pageCount - lastN + 1),
-      pageEnd: pageCount,
-    };
-  }
-
-  if (pageMode === "custom") {
-    return {
-      pageStart: clampNumber(customStart, 1, pageCount),
-      pageEnd: clampNumber(customEnd, 1, pageCount),
-    };
-  }
-
-  return {
-    pageStart: 1,
-    pageEnd: pageCount,
-  };
-}
-
-async function safeErrorMessage(response, fallback) {
-  try {
-    const data = await response.json();
-    return data?.error || data?.message || fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function getReadableAuthError(error) {
-  const code = error?.code || "";
-
-  switch (code) {
-    case "auth/popup-blocked":
-      return "Popup was blocked. The app will try redirect sign-in instead.";
-    case "auth/popup-closed-by-user":
-      return "Sign-in popup was closed before completion.";
-    case "auth/unauthorized-domain":
-      return "This domain is not authorized in Firebase. Add it in Firebase Authentication settings.";
-    case "auth/operation-not-allowed":
-      return "Google sign-in is not enabled in Firebase Authentication.";
-    case "auth/network-request-failed":
-      return "Network error while signing in. Check your connection and try again.";
-    case "auth/invalid-api-key":
-      return "Firebase API key is invalid. Check your NEXT_PUBLIC_FIREBASE_API_KEY value.";
-    default:
-      return (
-        error?.message ||
-        "Sign-in failed. Check Firebase configuration and authorized domains."
-      );
-  }
 }
