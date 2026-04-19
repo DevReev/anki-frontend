@@ -1,23 +1,59 @@
+// app/page.js
 "use client";
+import { useState, useRef, useEffect } from "react";
+import { initializeApp } from "firebase/app";
+import {
+  getAuth,
+  signInWithPopup,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+} from "firebase/auth";
 
-import { useState, useRef } from "react";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
 
-const API = process.env.NEXT_PUBLIC_API_URL;
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 
 export default function Home() {
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
   const [file, setFile] = useState(null);
   const [pageCount, setPageCount] = useState(null);
-  const [pageMode, setPageMode] = useState("all"); // "all" | "first" | "last" | "custom"
+  const [pageMode, setPageMode] = useState("all");
   const [firstN, setFirstN] = useState(1);
   const [lastN, setLastN] = useState(1);
   const [customStart, setCustomStart] = useState(1);
   const [customEnd, setCustomEnd] = useState(1);
   const [status, setStatus] = useState("idle");
-  const [cardCount, setCardCount] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [jobId, setJobId] = useState(null);
+  const [previewCards, setPreviewCards] = useState([]);
+  const [showPreview, setShowPreview] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState("");
-  const [downloadName, setDownloadName] = useState("anki_deck.apkg");
   const inputRef = useRef();
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      setUser(u);
+      if (u) {
+        const t = await u.getIdToken();
+        setToken(t);
+      } else {
+        setToken(null);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  const handleLogin = () => signInWithPopup(auth, new GoogleAuthProvider());
 
   async function handleFileChange(e) {
     const selected = e.target.files[0];
@@ -28,16 +64,15 @@ export default function Home() {
     setFile(selected);
     setStatus("idle");
     setErrorMsg("");
-    setDownloadUrl("");
-    setCardCount(null);
-    setPageCount(null);
-    setPageMode("all");
-
-    // Fetch page count
+    setShowPreview(false);
+    setPreviewCards([]);
     try {
       const form = new FormData();
       form.append("file", selected);
-      const res = await fetch(`${API}/page-count`, { method: "POST", body: form });
+      const res = await fetch(`${API}/page-count`, {
+        method: "POST",
+        body: form,
+      });
       const data = await res.json();
       if (data.page_count) {
         setPageCount(data.page_count);
@@ -47,24 +82,28 @@ export default function Home() {
         setCustomEnd(data.page_count);
       }
     } catch {
-      // non-fatal — page selector stays hidden
+      setErrorMsg("Failed to read PDF pages");
     }
   }
 
   function getPageRange() {
-    if (!pageCount || pageMode === "all") return { page_start: 1, page_end: pageCount };
-    if (pageMode === "first") return { page_start: 1, page_end: Math.min(firstN, pageCount) };
-    if (pageMode === "last") return { page_start: Math.max(1, pageCount - lastN + 1), page_end: pageCount };
-    if (pageMode === "custom") return { page_start: customStart, page_end: customEnd };
-    return {};
+    if (!pageCount || pageMode === "all")
+      return { page_start: 1, page_end: pageCount };
+    if (pageMode === "first")
+      return { page_start: 1, page_end: Math.min(firstN, pageCount) };
+    if (pageMode === "last")
+      return {
+        page_start: Math.max(1, pageCount - lastN + 1),
+        page_end: pageCount,
+      };
+    return { page_start: customStart, page_end: customEnd };
   }
 
   async function handleSubmit() {
-    if (!file) return;
+    if (!file || !token) return;
     setStatus("uploading");
     setErrorMsg("");
-    setCardCount(null);
-
+    setShowPreview(false);
     try {
       const { page_start, page_end } = getPageRange();
       const formData = new FormData();
@@ -72,13 +111,14 @@ export default function Home() {
       if (page_start) formData.append("page_start", page_start);
       if (page_end) formData.append("page_end", page_end);
 
-      const res = await fetch(`${API}/generate`, { method: "POST", body: formData });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Upload failed");
-      }
-
+      const res = await fetch(`${API}/generate`, {
+        method: "POST",
+        body: formData,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error((await res.json()).error || "Upload failed");
       const { job_id } = await res.json();
+      setJobId(job_id);
       setStatus("processing");
       pollStatus(job_id);
     } catch (err) {
@@ -87,182 +127,258 @@ export default function Home() {
     }
   }
 
-  function pollStatus(job_id) {
+  function pollStatus(id) {
     let failures = 0;
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`${API}/status/${job_id}`);
+        // Refresh token before polling to avoid 401 on long runs
+        const t = user ? await user.getIdToken() : token;
+        const res = await fetch(`${API}/status/${id}`, {
+          headers: { Authorization: `Bearer ${t}` },
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         failures = 0;
-
         if (data.status === "done") {
           clearInterval(interval);
-          setCardCount(data.card_count);
-          // Build download URL — filename is randomized server-side
-          setDownloadUrl(`${API}/download/${job_id}`);
-          setDownloadName(`anki_${job_id.slice(0, 8)}.apkg`);
           setStatus("done");
+          fetchPreview(id, t);
         } else if (data.status === "error") {
           clearInterval(interval);
           setStatus("error");
-          setErrorMsg(data.error || "Generation failed");
+          setErrorMsg(data.error);
         }
       } catch (err) {
         failures++;
         if (failures >= 4) {
           clearInterval(interval);
           setStatus("error");
-          setErrorMsg(`Connection lost after ${failures} retries: ${err.message}`);
+          setErrorMsg("Connection lost");
         }
       }
-    }, 6000);
+    }, 5000);
+  }
+
+  async function fetchPreview(id, t) {
+    try {
+      const res = await fetch(`${API}/preview/${id}`, {
+        headers: { Authorization: `Bearer ${t || token}` },
+      });
+      const data = await res.json();
+      setPreviewCards(data.cards || []);
+      setDownloadUrl(data.download_url || "");
+      setShowPreview(true);
+    } catch {
+      setErrorMsg("Failed to load preview");
+    }
   }
 
   const isProcessing = status === "uploading" || status === "processing";
 
   return (
-    <main className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 w-full max-w-lg p-8">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-1">PDF → Anki Deck</h1>
-        <p className="text-gray-500 text-sm mb-8">
-          Upload a PDF and get a downloadable Anki deck (.apkg).
-        </p>
-
-        {/* Drop zone */}
-        <div
-          onClick={() => !isProcessing && inputRef.current.click()}
-          className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors mb-4 ${
-            isProcessing
-              ? "border-gray-100 bg-gray-50 cursor-not-allowed"
-              : "border-gray-200 cursor-pointer hover:border-blue-400 hover:bg-blue-50"
-          }`}
-        >
-          <input ref={inputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileChange} />
-          {file ? (
-            <div>
-              <p className="text-gray-800 font-medium">{file.name}</p>
-              <p className="text-gray-400 text-sm mt-1">
-                {(file.size / 1024 / 1024).toFixed(2)} MB
-                {pageCount ? ` · ${pageCount} pages` : ""}
-                {!isProcessing && " — click to change"}
-              </p>
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 text-slate-800 p-6 font-sans">
+      <div className="max-w-5xl mx-auto">
+        {/* Header & Auth */}
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
+            PDF → Anki Deck
+          </h1>
+          {user ? (
+            <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-full shadow-md">
+              <img
+                src={user.photoURL || "/default-avatar.png"}
+                className="w-8 h-8 rounded-full"
+                alt="avatar"
+              />
+              <span className="text-sm font-medium">{user.email}</span>
+              <button
+                onClick={() => auth.signOut()}
+                className="text-xs text-red-500 hover:underline"
+              >
+                Logout
+              </button>
             </div>
           ) : (
-            <div>
-              <p className="text-gray-500">Click to select a PDF</p>
-              <p className="text-gray-400 text-xs mt-1">or drag and drop</p>
-            </div>
+            <button
+              onClick={handleLogin}
+              className="px-5 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition"
+            >
+              Sign in with Google
+            </button>
           )}
         </div>
 
-        {/* Page range selector */}
-        {pageCount && !isProcessing && status !== "done" && (
-          <div className="mb-6 border border-gray-100 rounded-xl p-4 bg-gray-50">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-              Pages to process
-            </p>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {["all", "first", "last", "custom"].map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setPageMode(m)}
-                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                    pageMode === m
-                      ? "bg-blue-600 text-white"
-                      : "bg-white border border-gray-200 text-gray-600 hover:border-blue-400"
-                  }`}
-                >
-                  {m === "all" ? `All (${pageCount})` : m.charAt(0).toUpperCase() + m.slice(1)}
-                </button>
-              ))}
-            </div>
-
+        {/* Persistent Page Selector */}
+        <div className="sticky top-4 z-10 bg-white/90 backdrop-blur-md rounded-2xl p-5 shadow-lg border border-slate-100 mb-6">
+          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">
+            Pages to Process
+          </h3>
+          <div className="flex flex-wrap gap-3 mb-4">
+            {["all", "first", "last", "custom"].map((m) => (
+              <button
+                key={m}
+                onClick={() => setPageMode(m)}
+                className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${pageMode === m ? "bg-blue-600 text-white shadow-md scale-105" : "bg-slate-100 hover:bg-slate-200 text-slate-600"}`}
+              >
+                {m === "all"
+                  ? `All (${pageCount || "?"})`
+                  : m.charAt(0).toUpperCase() + m.slice(1)}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-3 text-slate-700">
             {pageMode === "first" && (
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <span>First</span>
+              <span className="flex items-center gap-2">
+                First{" "}
                 <input
-                  type="number" min={1} max={pageCount} value={firstN}
-                  onChange={(e) => setFirstN(Math.min(pageCount, Math.max(1, +e.target.value)))}
-                  className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-center"
-                />
-                <span>pages</span>
-              </div>
+                  type="number"
+                  min={1}
+                  max={pageCount}
+                  value={firstN}
+                  onChange={(e) =>
+                    setFirstN(Math.min(pageCount, Math.max(1, +e.target.value)))
+                  }
+                  className="w-16 border-2 border-slate-200 rounded-lg px-3 py-2 text-center font-medium focus:border-blue-500 outline-none"
+                />{" "}
+                pages
+              </span>
             )}
             {pageMode === "last" && (
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <span>Last</span>
+              <span className="flex items-center gap-2">
+                Last{" "}
                 <input
-                  type="number" min={1} max={pageCount} value={lastN}
-                  onChange={(e) => setLastN(Math.min(pageCount, Math.max(1, +e.target.value)))}
-                  className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-center"
-                />
-                <span>pages</span>
-              </div>
+                  type="number"
+                  min={1}
+                  max={pageCount}
+                  value={lastN}
+                  onChange={(e) =>
+                    setLastN(Math.min(pageCount, Math.max(1, +e.target.value)))
+                  }
+                  className="w-16 border-2 border-slate-200 rounded-lg px-3 py-2 text-center font-medium focus:border-blue-500 outline-none"
+                />{" "}
+                pages
+              </span>
             )}
             {pageMode === "custom" && (
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <span>Pages</span>
+              <span className="flex items-center gap-2">
+                Pages{" "}
                 <input
-                  type="number" min={1} max={pageCount} value={customStart}
-                  onChange={(e) => setCustomStart(Math.min(customEnd, Math.max(1, +e.target.value)))}
-                  className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-center"
-                />
-                <span>to</span>
+                  type="number"
+                  min={1}
+                  max={pageCount}
+                  value={customStart}
+                  onChange={(e) =>
+                    setCustomStart(
+                      Math.min(customEnd, Math.max(1, +e.target.value)),
+                    )
+                  }
+                  className="w-16 border-2 border-slate-200 rounded-lg px-3 py-2 text-center font-medium focus:border-blue-500 outline-none"
+                />{" "}
+                to{" "}
                 <input
-                  type="number" min={customStart} max={pageCount} value={customEnd}
-                  onChange={(e) => setCustomEnd(Math.min(pageCount, Math.max(customStart, +e.target.value)))}
-                  className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-center"
-                />
-                <span className="text-gray-400">of {pageCount}</span>
-              </div>
+                  type="number"
+                  min={customStart}
+                  max={pageCount}
+                  value={customEnd}
+                  onChange={(e) =>
+                    setCustomEnd(
+                      Math.min(
+                        pageCount,
+                        Math.max(customStart, +e.target.value),
+                      ),
+                    )
+                  }
+                  className="w-16 border-2 border-slate-200 rounded-lg px-3 py-2 text-center font-medium focus:border-blue-500 outline-none"
+                />{" "}
+                of {pageCount}
+              </span>
             )}
           </div>
-        )}
+        </div>
 
-        {/* Generate button */}
+        {/* Upload Area */}
+        <div
+          onClick={() => !isProcessing && inputRef.current.click()}
+          className={`border-2 border-dashed rounded-2xl p-10 text-center transition-all cursor-pointer mb-6 ${isProcessing ? "border-slate-200 bg-slate-50 cursor-not-allowed" : "border-blue-200 hover:border-blue-400 hover:bg-blue-50/50"}`}
+        >
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".pdf"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          {file ? (
+            <div>
+              <p className="text-lg font-semibold">{file.name}</p>
+              <p className="text-slate-500 text-sm mt-1">
+                {(file.size / 1024 / 1024).toFixed(2)} MB • {pageCount} pages
+              </p>
+            </div>
+          ) : (
+            <p className="text-slate-500">Drop a PDF here or click to browse</p>
+          )}
+        </div>
+
+        {/* Action Button */}
         <button
           onClick={handleSubmit}
-          disabled={!file || isProcessing}
-          className="w-full py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          disabled={!file || isProcessing || !user}
+          className="w-full py-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {status === "uploading" ? "Uploading..." : status === "processing" ? "Generating cards..." : "Generate Anki Deck"}
+          {status === "uploading"
+            ? "Uploading..."
+            : status === "processing"
+              ? "Generating..."
+              : "Generate Anki Deck"}
         </button>
 
-        {/* Processing spinner */}
-        {status === "processing" && (
-          <div className="mt-6 flex items-center gap-3 text-blue-600">
-            <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-            </svg>
-            <span className="text-sm">Processing your PDF — this may take a few minutes.</span>
+        {/* Status & Preview */}
+        {isProcessing && (
+          <div className="mt-6 flex items-center justify-center gap-3 text-blue-600">
+            <div className="animate-spin h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+            <span>Processing pages...</span>
           </div>
         )}
 
-        {/* Download — only shown when status === "done" */}
-        {status === "done" && (
-          <div className="mt-6">
-            <a
-              href={downloadUrl}
-              download={downloadName}
-              className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-green-600 text-white font-medium text-center hover:bg-green-700 transition-colors"
-            >
-              ⬇ Download Anki Deck (.apkg)
-            </a>
-            {cardCount && (
-              <p className="text-gray-400 text-xs text-center mt-2">
-                {cardCount} cards generated · import directly into Anki on any device
-              </p>
-            )}
+        {status === "done" && showPreview && (
+          <div className="mt-8 bg-white rounded-2xl shadow-xl p-6 border border-slate-100">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold">
+                Generated Cards Preview ({previewCards.length} shown)
+              </h3>
+              {downloadUrl && (
+                <a
+                  href={downloadUrl}
+                  target="_blank"
+                  rel="noopener"
+                  className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium shadow"
+                >
+                  ⬇ Download .apkg
+                </a>
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+              {previewCards.map((c, i) => (
+                <div
+                  key={i}
+                  className="border border-slate-200 rounded-xl p-4 bg-slate-50 hover:shadow-md transition"
+                >
+                  <div className="font-semibold text-blue-700 mb-2">
+                    Front: {c.front}
+                  </div>
+                  <div className="text-slate-700 border-t border-slate-200 pt-2 mt-2">
+                    Back: {c.back}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
-        {/* Error */}
         {status === "error" && (
-          <div className="mt-6 bg-red-50 border border-red-200 rounded-xl p-4">
-            <p className="text-red-700 text-sm font-medium">Something went wrong</p>
-            <p className="text-red-500 text-xs mt-1">{errorMsg}</p>
+          <div className="mt-6 bg-red-50 border border-red-200 rounded-xl p-4 text-red-700">
+            {errorMsg}
           </div>
         )}
       </div>
