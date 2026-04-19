@@ -392,6 +392,12 @@ export default function Home() {
                 />
                 <span className="text-sm font-medium">{user.email}</span>
                 <button
+                  onClick={() => router.push("/account")}
+                  className="text-xs text-blue-600 hover:underline"
+                >
+                  My Decks
+                </button>
+                <button
                   onClick={handleLogout}
                   className="text-xs text-red-500 hover:underline"
                   type="button"
