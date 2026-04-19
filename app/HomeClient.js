@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Zap,
+  FileText,
 } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -130,6 +131,7 @@ export default function HomeClient() {
       setCardFlipped(false);
     }
   };
+
   const prevCard = () => {
     if (currentCardIndex > 0) {
       setCurrentCardIndex((i) => i - 1);
@@ -147,6 +149,7 @@ export default function HomeClient() {
     );
 
   const currentCard = previewCards[currentCardIndex];
+  const showDownload = jobStatus?.download_url && previewCards.length > 0;
 
   return (
     <>
@@ -272,6 +275,20 @@ export default function HomeClient() {
                     )}
                   </button>
 
+                  {/* Big Green Download Button - appears below Generate after generation */}
+                  {showDownload && (
+                    <a
+                      href={jobStatus.download_url}
+                      download
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={styles.bigDownloadBtn}
+                    >
+                      <Download size={20} style={{ marginRight: 10 }} />
+                      Download Full Deck
+                    </a>
+                  )}
+
                   {/* Status */}
                   {jobStatus && (
                     <div style={styles.statusBox}>
@@ -288,9 +305,10 @@ export default function HomeClient() {
               </div>
             </div>
 
-            {/* RIGHT: Preview */}
+            {/* RIGHT: Preview Area */}
             <div style={styles.rightCol}>
               {previewCards.length > 0 ? (
+                /* Flashcard Preview */
                 <div style={styles.card}>
                   <div
                     style={{ ...styles.cardHeader, ...styles.previewHeader }}
@@ -306,18 +324,6 @@ export default function HomeClient() {
                         Card {currentCardIndex + 1} of {previewCards.length}
                       </p>
                     </div>
-                    {jobStatus?.download_url && (
-                      <a
-                        href={jobStatus.download_url}
-                        download
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={styles.downloadBtn}
-                      >
-                        <Download size={14} style={{ marginRight: 6 }} />
-                        Download
-                      </a>
-                    )}
                   </div>
                   <div style={styles.cardBody}>
                     {/* Flashcard */}
@@ -394,11 +400,38 @@ export default function HomeClient() {
                   </div>
                 </div>
               ) : (
-                <div style={{ ...styles.card, ...styles.emptyPreview }}>
-                  <div style={styles.emptyIcon}>
-                    <FileUp size={32} style={{ color: "var(--accent)" }} />
+                /* PDF Preview (shown until cards are generated) */
+                <div style={{ ...styles.card, ...styles.pdfPreviewCard }}>
+                  <div style={styles.pdfPreviewContent}>
+                    <div style={styles.pdfIcon}>
+                      <FileText size={48} style={{ color: "var(--accent)" }} />
+                    </div>
+                    {file ? (
+                      <>
+                        <h3 style={styles.pdfTitle}>{file.name}</h3>
+                        <p style={styles.pdfInfo}>
+                          {pageCount} pages • Selected: {pageRange[0]}–
+                          {pageRange[1]}
+                        </p>
+                        <div style={styles.pdfHint}>
+                          Click "Generate Deck" to create flashcards from this
+                          PDF
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div style={styles.emptyIcon}>
+                          <FileUp
+                            size={32}
+                            style={{ color: "var(--accent)" }}
+                          />
+                        </div>
+                        <p style={styles.emptyText}>
+                          Upload a PDF to see preview
+                        </p>
+                      </>
+                    )}
                   </div>
-                  <p style={styles.emptyText}>Upload a PDF to see preview</p>
                 </div>
               )}
             </div>
@@ -613,6 +646,29 @@ const styles = {
     letterSpacing: "0.01em",
   },
 
+  /* Big Green Download Button */
+  bigDownloadBtn: {
+    width: "100%",
+    marginTop: 12,
+    padding: "18px 20px",
+    borderRadius: 12,
+    background: "var(--green)",
+    color: "#fff",
+    fontFamily: "'Syne', sans-serif",
+    fontSize: 16,
+    fontWeight: 700,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    textDecoration: "none",
+    boxShadow: "0 4px 20px rgba(52, 211, 153, 0.35)",
+    transition: "all 0.2s ease",
+  },
+  bigDownloadBtnHover: {
+    transform: "translateY(-2px)",
+    boxShadow: "0 6px 25px rgba(52, 211, 153, 0.45)",
+  },
+
   statusBox: {
     display: "flex",
     alignItems: "center",
@@ -632,20 +688,6 @@ const styles = {
     flexShrink: 0,
   },
   statusText: { fontSize: 13, color: "var(--muted)" },
-
-  downloadBtn: {
-    display: "flex",
-    alignItems: "center",
-    padding: "8px 14px",
-    borderRadius: 10,
-    background: "var(--surface)",
-    border: "1px solid var(--border-strong)",
-    color: "var(--text)",
-    fontSize: 13,
-    fontWeight: 500,
-    textDecoration: "none",
-    transition: "background 0.2s",
-  },
 
   flashcard: {
     background: "rgba(79,142,247,0.06)",
@@ -722,6 +764,39 @@ const styles = {
     transition: "all 0.2s",
   },
   dotActive: { width: 18, borderRadius: 3, background: "var(--accent)" },
+
+  /* PDF Preview Styles */
+  pdfPreviewCard: {
+    minHeight: 420,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pdfPreviewContent: {
+    textAlign: "center",
+    padding: "40px 20px",
+  },
+  pdfIcon: {
+    marginBottom: 24,
+  },
+  pdfTitle: {
+    fontFamily: "'Syne', sans-serif",
+    fontSize: 18,
+    fontWeight: 600,
+    color: "var(--text)",
+    marginBottom: 8,
+    wordBreak: "break-all",
+  },
+  pdfInfo: {
+    fontSize: 14,
+    color: "var(--accent)",
+    marginBottom: 24,
+  },
+  pdfHint: {
+    fontSize: 13,
+    color: "var(--muted)",
+    fontStyle: "italic",
+  },
 
   emptyPreview: {
     display: "flex",
