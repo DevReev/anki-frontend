@@ -243,7 +243,7 @@ export default function Home() {
         {/* Download — only shown when status === "done" */}
         {status === "done" && (
           <div className="mt-6">
-            
+            <a
               href={downloadUrl}
               download={downloadName}
               className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-green-600 text-white font-medium text-center hover:bg-green-700 transition-colors"
