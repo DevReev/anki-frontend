@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { app } from "../lib/firebase";
+import Link from "next/link";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -132,11 +133,16 @@ export default function ReviewClient() {
           <span className="text-sm text-slate-500">
             Card {currentIndex + 1} of {cards.length}
           </span>
-          <button
+          {/* <button
             onClick={() => router.push("/account")}
             className="text-blue-600 hover:underline text-sm"
           >
             My Decks
+          </button>
+          */}
+          <button className="text-blue-600 hover:underline text-sm">
+            <Link href="/account">My Decks</Link>
+            {/* My Decks */}
           </button>
         </div>
 

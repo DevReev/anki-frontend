@@ -10,6 +10,8 @@ import {
   signInWithRedirect,
   getRedirectResult,
 } from "firebase/auth";
+import { useRouter } from "next/navigation";
+import { round } from "firebase/firestore/pipelines";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -59,6 +61,8 @@ export default function Home() {
 
   const pollRef = useRef(null);
   const inputRef = useRef(null);
+
+  const router = useRouter();
 
   useEffect(() => {
     if (!auth) {
