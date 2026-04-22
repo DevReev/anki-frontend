@@ -22,44 +22,44 @@ const QUALITY = [
   {
     label: "Again",
     score: 0,
-    color: "rgba(248,113,113,0.15)",
-    border: "rgba(248,113,113,0.3)",
-    text: "#f87171",
+    color: "rgba(107,31,42,0.07)",
+    border: "rgba(107,31,42,0.25)",
+    text: "var(--burgundy)",
   },
   {
     label: "Hard",
     score: 1,
-    color: "rgba(251,146,60,0.12)",
-    border: "rgba(251,146,60,0.3)",
-    text: "#fb923c",
+    color: "rgba(139,47,61,0.06)",
+    border: "rgba(139,47,61,0.2)",
+    text: "var(--burgundy-light)",
   },
   {
     label: "Tough",
     score: 2,
-    color: "rgba(251,191,36,0.1)",
-    border: "rgba(251,191,36,0.25)",
-    text: "#fbbf24",
+    color: "rgba(196,150,58,0.07)",
+    border: "rgba(196,150,58,0.25)",
+    text: "var(--gold)",
   },
   {
     label: "Good",
     score: 3,
-    color: "rgba(52,211,153,0.1)",
-    border: "rgba(52,211,153,0.25)",
-    text: "#34d399",
+    color: "rgba(42,122,74,0.07)",
+    border: "rgba(42,122,74,0.25)",
+    text: "var(--green)",
   },
   {
     label: "Easy",
     score: 4,
-    color: "rgba(79,142,247,0.1)",
-    border: "rgba(79,142,247,0.25)",
-    text: "#4f8ef7",
+    color: "rgba(26,18,8,0.04)",
+    border: "rgba(26,18,8,0.15)",
+    text: "var(--ink-soft)",
   },
   {
     label: "Perfect",
     score: 5,
-    color: "rgba(79,142,247,0.2)",
-    border: "rgba(79,142,247,0.5)",
-    text: "#4f8ef7",
+    color: "rgba(26,18,8,0.08)",
+    border: "rgba(26,18,8,0.25)",
+    text: "var(--ink)",
   },
 ];
 
@@ -193,9 +193,9 @@ export default function ReviewClient() {
           <Navbar />
           <div style={S.loadingCenter}>
             <Loader2
-              size={28}
+              size={26}
               className="af-spin"
-              style={{ color: "var(--accent)" }}
+              style={{ color: "var(--burgundy)" }}
             />
           </div>
         </div>
@@ -213,33 +213,39 @@ export default function ReviewClient() {
         <div style={S.container}>
           {isDeckView ? (
             <>
+              {/* Page heading */}
+              <div style={S.pageHeading}>
+                <p style={S.eyebrow}>Spaced Repetition</p>
+                <h1 style={S.pageTitle}>
+                  Review
+                  <br />
+                  <em style={S.pageTitleItalic}>Session</em>
+                </h1>
+              </div>
+              <div style={S.headingRule} />
+
               {/* Stats strip */}
               {stats && (
                 <div style={S.statsStrip}>
                   {[
                     {
-                      icon: <BarChart3 size={18} />,
+                      icon: <BarChart3 size={16} />,
                       label: "Total Cards",
                       value: stats.total_cards,
-                      color: "var(--accent)",
                     },
                     {
-                      icon: <Calendar size={18} />,
+                      icon: <Calendar size={16} />,
                       label: "Due Today",
                       value: stats.cards_due,
-                      color: "var(--green)",
                     },
                     {
-                      icon: <Zap size={18} />,
-                      label: "Streak",
+                      icon: <Zap size={16} />,
+                      label: "Day Streak",
                       value: stats.review_streak,
-                      color: "var(--yellow)",
                     },
                   ].map((s, i) => (
                     <div key={i} style={S.statCard}>
-                      <div style={{ ...S.statIcon, color: s.color }}>
-                        {s.icon}
-                      </div>
+                      <div style={S.statIcon}>{s.icon}</div>
                       <div>
                         <div style={S.statValue}>{s.value}</div>
                         <div style={S.statLabel}>{s.label}</div>
@@ -252,28 +258,26 @@ export default function ReviewClient() {
               {/* Decks */}
               <div style={S.card}>
                 <div style={S.cardHeader}>
-                  <h2 style={S.cardTitle}>Select Deck to Review</h2>
-                  <p style={S.cardSub}>
-                    Choose a deck to practice with spaced repetition
-                  </p>
+                  <p style={S.cardEyebrow}>Select</p>
+                  <h2 style={S.cardTitle}>Choose a Deck to Review</h2>
+                  <p style={S.cardSub}>Practice with spaced repetition</p>
                 </div>
                 <div style={S.cardBody}>
                   {decks.length === 0 ? (
                     <div style={S.noDeckEmpty}>
                       <AlertCircle
-                        size={28}
-                        style={{ color: "var(--muted)", marginBottom: 12 }}
-                      />
-                      <p
+                        size={24}
                         style={{
-                          fontSize: 14,
-                          color: "var(--muted)",
-                          marginBottom: 16,
+                          color: "var(--rule-strong)",
+                          marginBottom: 12,
                         }}
+                      />
+                      <p style={S.noDeckText}>No decks yet</p>
+                      <a
+                        href="/"
+                        style={S.createLink}
+                        className="af-btn-primary"
                       >
-                        No decks yet
-                      </p>
-                      <a href="/" style={S.createLink}>
                         Create First Deck
                       </a>
                     </div>
@@ -297,7 +301,7 @@ export default function ReviewClient() {
                               {deck.card_count} cards
                             </div>
                             <div style={S.deckBtnReview}>
-                              Review <Zap size={12} style={{ marginLeft: 5 }} />
+                              Review <Zap size={11} style={{ marginLeft: 5 }} />
                             </div>
                           </div>
                         </button>
@@ -320,11 +324,15 @@ export default function ReviewClient() {
                   style={S.backBtn}
                   className="af-back-btn"
                 >
-                  <ChevronLeft size={16} style={{ marginRight: 4 }} />
+                  <ChevronLeft size={14} style={{ marginRight: 4 }} />
                   Back
                 </button>
-                <h1 style={S.reviewTitle}>{selectedDeck?.deck_name}</h1>
+                <div style={S.reviewTitleBlock}>
+                  <p style={S.eyebrow}>Reviewing</p>
+                  <h1 style={S.reviewTitle}>{selectedDeck?.deck_name}</h1>
+                </div>
               </div>
+              <div style={S.headingRule} />
 
               {cards.length > 0 && currentCard ? (
                 <>
@@ -422,7 +430,7 @@ export default function ReviewClient() {
                     {error === "Review complete! 🎉" ? (
                       <>
                         <CheckCircle2
-                          size={44}
+                          size={40}
                           style={{ color: "var(--green)", marginBottom: 16 }}
                         />
                         <h3 style={{ ...S.cardTitle, marginBottom: 10 }}>
@@ -430,12 +438,14 @@ export default function ReviewClient() {
                         </h3>
                         <p
                           style={{
-                            fontSize: 14,
-                            color: "var(--muted)",
+                            fontFamily: "'Crimson Pro',serif",
+                            fontStyle: "italic",
+                            fontSize: 15,
+                            color: "var(--ink-muted)",
                             marginBottom: 24,
                           }}
                         >
-                          Great job! You'll see more cards when they're due.
+                          Great work. You'll see more cards when they're due.
                         </p>
                         <button
                           onClick={() => {
@@ -445,7 +455,7 @@ export default function ReviewClient() {
                             setError("");
                           }}
                           style={S.backToDecksBtn}
-                          className="af-btn-glow"
+                          className="af-btn-primary"
                         >
                           Back to Decks
                         </button>
@@ -453,13 +463,23 @@ export default function ReviewClient() {
                     ) : (
                       <>
                         <AlertCircle
-                          size={44}
-                          style={{ color: "var(--accent)", marginBottom: 16 }}
+                          size={40}
+                          style={{
+                            color: "var(--rule-strong)",
+                            marginBottom: 16,
+                          }}
                         />
                         <h3 style={{ ...S.cardTitle, marginBottom: 10 }}>
                           No Cards Due
                         </h3>
-                        <p style={{ fontSize: 14, color: "var(--muted)" }}>
+                        <p
+                          style={{
+                            fontFamily: "'Crimson Pro',serif",
+                            fontStyle: "italic",
+                            fontSize: 15,
+                            color: "var(--ink-muted)",
+                          }}
+                        >
                           Come back later when more cards are due for review.
                         </p>
                       </>
@@ -474,10 +494,10 @@ export default function ReviewClient() {
           {error && error !== "Review complete! 🎉" && (
             <div style={{ ...S.errorBanner, marginTop: 16 }}>
               <AlertCircle
-                size={15}
-                style={{ color: "var(--red)", flexShrink: 0 }}
+                size={13}
+                style={{ color: "var(--burgundy)", flexShrink: 0 }}
               />
-              <span style={{ fontSize: 13, color: "var(--red)" }}>{error}</span>
+              <span style={S.errorText}>{error}</span>
             </div>
           )}
         </div>
@@ -487,41 +507,55 @@ export default function ReviewClient() {
 }
 
 const globalStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=IBM+Plex+Mono:wght@400;500&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap');
+
   :root {
-    --bg: #0d1117; --surface: rgba(255,255,255,0.04); --surface-hover: rgba(255,255,255,0.07);
-    --border: rgba(255,255,255,0.08); --border-strong: rgba(255,255,255,0.14);
-    --text: #e8eaf0; --muted: #6b7280;
-    --accent: #4f8ef7; --accent-glow: rgba(79,142,247,0.35);
-    --green: #34d399; --red: #f87171; --yellow: #fbbf24;
+    --cream: #F5F0E8;
+    --cream-dark: #EDE6D6;
+    --ink: #1A1208;
+    --ink-soft: #3D3322;
+    --ink-muted: #7A6E5A;
+    --burgundy: #6B1F2A;
+    --burgundy-light: #8B2F3D;
+    --gold: #C4963A;
+    --rule: #C8BFA8;
+    --rule-strong: #8A7A62;
+    --white: #FDFBF7;
+    --green: #2A7A4A;
+    --red: #6B1F2A;
   }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
+  body {
+    background: var(--cream);
+    color: var(--ink);
+    font-family: 'Crimson Pro', Georgia, serif;
+  }
 
   @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
   .af-spin { animation: spin 1s linear infinite; }
-  @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
 
-  .af-btn-glow { transition: all 0.2s ease !important; }
-  .af-btn-glow:hover { box-shadow: 0 0 20px var(--accent-glow) !important; transform: translateY(-1px); }
+  .af-btn-primary { transition: background 0.15s !important; }
+  .af-btn-primary:hover { background: var(--ink-soft) !important; }
 
-  .af-flashcard { cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
-  .af-flashcard:hover { transform: translateY(-2px); box-shadow: 0 16px 48px rgba(0,0,0,0.4); }
+  .af-flashcard { transition: all 0.2s ease; }
+  .af-flashcard:hover { transform: translateY(-2px); }
 
   .af-quality-btn { transition: all 0.15s ease; cursor: pointer; }
-  .af-quality-btn:hover { transform: translateY(-2px); filter: brightness(1.15); }
+  .af-quality-btn:hover { transform: translateY(-1px); filter: brightness(0.95); }
 
   .af-deck-btn { transition: transform 0.2s, box-shadow 0.2s; animation: fadeUp 0.3s ease; }
-  .af-deck-btn:hover { transform: translateY(-3px); box-shadow: 0 12px 36px rgba(0,0,0,0.4) !important; }
+  .af-deck-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(26,18,8,0.12) !important; }
 
-  .af-back-btn:hover { background: var(--surface-hover) !important; }
+  .af-back-btn:hover { background: var(--cream-dark) !important; border-color: var(--rule-strong) !important; }
 `;
 
 const S = {
   root: {
     minHeight: "100vh",
-    background: "var(--bg)",
-    fontFamily: "'DM Sans', sans-serif",
+    background: "var(--cream)",
+    fontFamily: "'Crimson Pro', Georgia, serif",
   },
   loadingCenter: {
     display: "flex",
@@ -529,57 +563,100 @@ const S = {
     justifyContent: "center",
     minHeight: "60vh",
   },
-  container: { maxWidth: 860, margin: "0 auto", padding: "36px 20px" },
+  container: { maxWidth: 900, margin: "0 auto", padding: "40px 24px 80px" },
+
+  pageHeading: { paddingBottom: 24 },
+  eyebrow: {
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 10,
+    letterSpacing: "0.15em",
+    textTransform: "uppercase",
+    color: "var(--burgundy)",
+    marginBottom: 10,
+  },
+  pageTitle: {
+    fontFamily: "'Playfair Display', Georgia, serif",
+    fontSize: "clamp(28px, 4vw, 44px)",
+    fontWeight: 900,
+    lineHeight: 1.1,
+    letterSpacing: "-0.02em",
+    color: "var(--ink)",
+  },
+  pageTitleItalic: { fontStyle: "italic", fontWeight: 700 },
+  headingRule: { borderTop: "2px solid var(--ink)", marginBottom: 32 },
 
   statsStrip: {
     display: "grid",
-    gridTemplateColumns: "repeat(3,1fr)",
-    gap: 12,
-    marginBottom: 20,
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: 0,
+    borderTop: "2px solid var(--ink)",
+    borderBottom: "1px solid var(--rule)",
+    marginBottom: 28,
   },
   statCard: {
-    background: "rgba(255,255,255,0.03)",
-    border: "1px solid var(--border)",
-    borderRadius: 16,
     padding: "18px 20px",
+    borderRight: "1px solid var(--rule)",
     display: "flex",
     alignItems: "center",
     gap: 14,
+    background: "var(--white)",
   },
   statIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    background: "rgba(255,255,255,0.05)",
+    width: 36,
+    height: 36,
+    border: "1px solid var(--rule)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
+    color: "var(--burgundy)",
+    background: "var(--cream)",
   },
   statValue: {
-    fontFamily: "'Syne', sans-serif",
-    fontSize: 24,
-    fontWeight: 800,
-    color: "var(--text)",
-    letterSpacing: "-0.03em",
+    fontFamily: "'Playfair Display', serif",
+    fontSize: 28,
+    fontWeight: 900,
+    color: "var(--ink)",
+    lineHeight: 1,
   },
-  statLabel: { fontSize: 12, color: "var(--muted)", marginTop: 2 },
+  statLabel: {
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 9,
+    letterSpacing: "0.1em",
+    textTransform: "uppercase",
+    color: "var(--ink-muted)",
+    marginTop: 4,
+  },
 
   card: {
-    background: "rgba(255,255,255,0.03)",
-    border: "1px solid var(--border)",
-    borderRadius: 20,
+    background: "var(--white)",
+    border: "1px solid var(--rule)",
+    borderTop: "2px solid var(--ink)",
     overflow: "hidden",
   },
   cardHeader: { padding: "24px 24px 0" },
-  cardTitle: {
-    fontFamily: "'Syne', sans-serif",
-    fontSize: 18,
-    fontWeight: 700,
-    color: "var(--text)",
-    letterSpacing: "-0.02em",
+  cardEyebrow: {
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 10,
+    letterSpacing: "0.15em",
+    textTransform: "uppercase",
+    color: "var(--burgundy)",
+    marginBottom: 6,
   },
-  cardSub: { fontSize: 13, color: "var(--muted)", marginTop: 4 },
+  cardTitle: {
+    fontFamily: "'Playfair Display', serif",
+    fontSize: 20,
+    fontWeight: 700,
+    color: "var(--ink)",
+    letterSpacing: "-0.01em",
+  },
+  cardSub: {
+    fontFamily: "'Crimson Pro', serif",
+    fontStyle: "italic",
+    fontSize: 15,
+    color: "var(--ink-muted)",
+    marginTop: 4,
+  },
   cardBody: { padding: 24 },
 
   noDeckEmpty: {
@@ -589,195 +666,256 @@ const S = {
     padding: "40px 20px",
     textAlign: "center",
   },
+  noDeckText: {
+    fontFamily: "'Crimson Pro', serif",
+    fontStyle: "italic",
+    fontSize: 15,
+    color: "var(--ink-muted)",
+    marginBottom: 16,
+  },
   createLink: {
     padding: "11px 22px",
-    borderRadius: 10,
-    background: "var(--accent)",
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: 600,
+    background: "var(--ink)",
+    border: "none",
+    color: "var(--cream)",
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 10,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase",
     textDecoration: "none",
+    display: "inline-block",
+    cursor: "pointer",
   },
 
   deckGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-    gap: 12,
+    gap: 0,
+    borderTop: "1px solid var(--rule)",
   },
   deckBtn: {
-    background: "rgba(255,255,255,0.03)",
-    border: "1px solid var(--border)",
-    borderRadius: 16,
+    background: "var(--white)",
+    border: "none",
+    borderBottom: "1px solid var(--rule)",
+    borderRight: "1px solid var(--rule)",
     overflow: "hidden",
     cursor: "pointer",
     textAlign: "left",
     padding: 0,
+    transition: "background 0.15s",
   },
   deckBtnStripe: {
     height: 3,
-    background: "linear-gradient(90deg, var(--accent), rgba(79,142,247,0.2))",
+    background: "var(--burgundy)",
   },
   deckBtnBody: { padding: "16px 18px" },
   deckBtnName: {
-    fontFamily: "'Syne', sans-serif",
+    fontFamily: "'Playfair Display', serif",
     fontSize: 15,
     fontWeight: 700,
-    color: "var(--text)",
+    color: "var(--ink)",
     marginBottom: 4,
-    letterSpacing: "-0.02em",
+    letterSpacing: "-0.01em",
+    textAlign: "left",
   },
-  deckBtnMeta: { fontSize: 12, color: "var(--muted)", marginBottom: 14 },
+  deckBtnMeta: {
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 10,
+    letterSpacing: "0.08em",
+    color: "var(--ink-muted)",
+    marginBottom: 14,
+  },
   deckBtnReview: {
     display: "inline-flex",
     alignItems: "center",
-    fontSize: 12,
-    fontWeight: 600,
-    color: "var(--accent)",
-    background: "rgba(79,142,247,0.1)",
-    border: "1px solid rgba(79,142,247,0.25)",
-    borderRadius: 8,
-    padding: "5px 12px",
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 9,
+    letterSpacing: "0.1em",
+    textTransform: "uppercase",
+    color: "var(--burgundy)",
+    background: "rgba(107,31,42,0.06)",
+    border: "1px solid rgba(107,31,42,0.2)",
+    padding: "5px 10px",
   },
 
-  reviewHeader: { marginBottom: 24 },
+  reviewHeader: { marginBottom: 16 },
+  reviewTitleBlock: { marginTop: 8 },
   backBtn: {
     display: "inline-flex",
     alignItems: "center",
     padding: "8px 14px",
-    borderRadius: 10,
-    background: "var(--surface)",
-    border: "1px solid var(--border)",
-    color: "var(--muted)",
-    fontSize: 13,
+    background: "var(--white)",
+    border: "1px solid var(--rule)",
+    color: "var(--ink-muted)",
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 10,
+    letterSpacing: "0.1em",
+    textTransform: "uppercase",
     cursor: "pointer",
     marginBottom: 16,
-    transition: "background 0.2s",
+    transition: "all 0.15s",
   },
   reviewTitle: {
-    fontFamily: "'Syne', sans-serif",
-    fontSize: 26,
-    fontWeight: 800,
-    color: "var(--text)",
-    letterSpacing: "-0.03em",
+    fontFamily: "'Playfair Display', serif",
+    fontSize: "clamp(24px, 3vw, 36px)",
+    fontWeight: 900,
+    color: "var(--ink)",
+    letterSpacing: "-0.02em",
+    fontStyle: "italic",
   },
 
   progressWrap: { marginBottom: 24 },
   progressHead: {
     display: "flex",
     justifyContent: "space-between",
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  progressLabel: { fontSize: 13, fontWeight: 500, color: "var(--muted)" },
-  progressCount: { fontSize: 13, color: "var(--accent)", fontWeight: 600 },
+  progressLabel: {
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 10,
+    letterSpacing: "0.1em",
+    textTransform: "uppercase",
+    color: "var(--ink-muted)",
+  },
+  progressCount: {
+    fontFamily: "'Playfair Display', serif",
+    fontSize: 15,
+    fontWeight: 700,
+    color: "var(--burgundy)",
+  },
   progressTrack: {
-    height: 4,
-    background: "var(--border)",
-    borderRadius: 2,
+    height: 2,
+    background: "var(--rule)",
     overflow: "hidden",
   },
   progressFill: {
     height: "100%",
-    background: "var(--accent)",
-    borderRadius: 2,
+    background: "var(--burgundy)",
     transition: "width 0.4s ease",
-    boxShadow: "0 0 8px var(--accent-glow)",
   },
 
   flashcard: {
-    background: "rgba(79,142,247,0.05)",
-    border: "1px solid rgba(79,142,247,0.18)",
-    borderRadius: 20,
+    background: "var(--white)",
+    border: "1px solid var(--rule)",
+    borderTop: "2px solid var(--ink)",
     padding: "36px 32px",
     minHeight: 320,
     display: "flex",
     flexDirection: "column",
     marginBottom: 28,
+    cursor: "pointer",
+    transition: "all 0.2s ease",
   },
   flashcardBack: {
-    background: "rgba(52,211,153,0.05)",
-    border: "1px solid rgba(52,211,153,0.18)",
+    borderTopColor: "var(--burgundy)",
+    background: "rgba(107,31,42,0.03)",
   },
   flashSide: {
-    fontSize: 10,
-    fontWeight: 700,
-    letterSpacing: "0.12em",
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 9,
+    letterSpacing: "0.15em",
     textTransform: "uppercase",
-    color: "var(--muted)",
-    marginBottom: 18,
+    color: "var(--ink-muted)",
+    marginBottom: 20,
   },
   flashContent: {
+    fontFamily: "'Crimson Pro', serif",
     fontSize: 18,
     lineHeight: 1.7,
-    color: "var(--text)",
+    color: "var(--ink)",
     flex: 1,
   },
   tagsRow: { display: "flex", flexWrap: "wrap", gap: 6, marginTop: 20 },
   tag: {
-    fontSize: 11,
-    padding: "3px 10px",
-    borderRadius: 20,
-    background: "var(--surface)",
-    border: "1px solid var(--border)",
-    color: "var(--muted)",
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 9,
+    letterSpacing: "0.08em",
+    padding: "3px 9px",
+    background: "var(--cream-dark)",
+    border: "1px solid var(--rule)",
+    color: "var(--ink-muted)",
   },
   flipHint: {
-    fontSize: 11,
-    color: "var(--muted)",
+    fontFamily: "'Crimson Pro', serif",
+    fontStyle: "italic",
+    fontSize: 12,
+    color: "var(--rule-strong)",
     marginTop: 20,
-    opacity: 0.5,
   },
 
   qualitySection: { marginBottom: 8 },
   qualityLabel: {
-    fontSize: 13,
-    color: "var(--muted)",
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 10,
+    letterSpacing: "0.1em",
+    textTransform: "uppercase",
+    color: "var(--ink-muted)",
     textAlign: "center",
     marginBottom: 14,
   },
   qualityGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(6,1fr)",
-    gap: 8,
-    marginBottom: 16,
+    gridTemplateColumns: "repeat(6, 1fr)",
+    gap: 0,
+    border: "1px solid var(--rule)",
+    marginBottom: 12,
   },
   qualityBtn: {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    padding: "12px 6px",
-    borderRadius: 12,
-    border: "1px solid",
-    fontFamily: "'DM Sans', sans-serif",
+    padding: "14px 6px",
+    borderRight: "1px solid var(--rule)",
+    border: "none",
+    borderRight: "1px solid rgba(200,191,168,0.5)",
+    fontFamily: "'Crimson Pro', serif",
+    transition: "all 0.15s",
   },
-  qualityName: { fontSize: 12, fontWeight: 600, marginBottom: 2 },
-  qualityNum: { fontSize: 11, opacity: 0.6 },
-  keyboardHint: {
-    textAlign: "center",
-    fontSize: 11,
-    color: "var(--muted)",
+  qualityName: {
+    fontFamily: "'Playfair Display', serif",
+    fontSize: 13,
+    fontWeight: 700,
+    marginBottom: 2,
+  },
+  qualityNum: {
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 9,
+    letterSpacing: "0.1em",
     opacity: 0.5,
+  },
+  keyboardHint: {
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 9,
+    letterSpacing: "0.08em",
+    textAlign: "center",
+    color: "var(--rule-strong)",
   },
 
   errorBanner: {
     display: "flex",
     alignItems: "center",
     gap: 10,
-    background: "rgba(248,113,113,0.08)",
-    border: "1px solid rgba(248,113,113,0.2)",
-    borderRadius: 12,
+    borderLeft: "2px solid var(--burgundy)",
+    background: "rgba(107,31,42,0.05)",
     padding: "12px 16px",
+  },
+  errorText: {
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 11,
+    letterSpacing: "0.04em",
+    color: "var(--burgundy)",
   },
 
   backToDecksBtn: {
     padding: "12px 28px",
-    borderRadius: 12,
-    background: "var(--accent)",
+    background: "var(--ink)",
     border: "none",
-    color: "#fff",
-    fontFamily: "'Syne', sans-serif",
-    fontSize: 14,
-    fontWeight: 700,
+    color: "var(--cream)",
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 10,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase",
     cursor: "pointer",
   },
 };

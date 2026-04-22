@@ -142,9 +142,11 @@ export default function HomeClient() {
   if (!user)
     return (
       <div style={styles.loadingScreen}>
-        <div style={styles.spinner}>
-          <Loader2 size={32} style={{ animation: "spin 1s linear infinite" }} />
-        </div>
+        <Loader2
+          size={28}
+          className="af-spin"
+          style={{ color: "var(--burgundy)" }}
+        />
       </div>
     );
 
@@ -157,22 +159,34 @@ export default function HomeClient() {
       <div style={styles.root}>
         <Navbar />
         <div style={styles.container}>
+          {/* Page heading */}
+          <div style={styles.pageHeading}>
+            <p style={styles.eyebrow}>New Deck</p>
+            <h1 style={styles.pageTitle}>
+              Generate Flashcards
+              <br />
+              <em style={styles.pageTitleItalic}>from a PDF</em>
+            </h1>
+          </div>
+          <div style={styles.headingRule} />
+
           <div style={styles.grid}>
             {/* LEFT: Upload & Settings */}
             <div style={styles.leftCol}>
               <div style={styles.card}>
                 <div style={styles.cardHeader}>
-                  <h2 style={styles.cardTitle}>Create New Deck</h2>
+                  <p style={styles.cardEyebrow}>Upload</p>
+                  <h2 style={styles.cardTitle}>Source Document</h2>
                   <p style={styles.cardSubtitle}>
                     Upload a PDF and generate flashcards using AI
                   </p>
                 </div>
                 <div style={styles.cardBody}>
                   {/* Drop Zone */}
-                  <label style={styles.dropZone}>
+                  <label style={styles.dropZone} className="af-drop-zone">
                     <FileUp
-                      size={28}
-                      style={{ color: "var(--accent)", marginBottom: 10 }}
+                      size={24}
+                      style={{ color: "var(--burgundy)", marginBottom: 10 }}
                     />
                     <span style={styles.dropZoneText}>Click to upload PDF</span>
                     <span style={styles.dropZoneHint}>or drag and drop</span>
@@ -188,8 +202,8 @@ export default function HomeClient() {
                   {file && (
                     <div style={styles.infoRow}>
                       <CheckCircle2
-                        size={15}
-                        style={{ color: "var(--green)" }}
+                        size={14}
+                        style={{ color: "var(--green)", flexShrink: 0 }}
                       />
                       <span style={styles.infoText}>
                         {file.name} · {pageCount} pages
@@ -200,6 +214,7 @@ export default function HomeClient() {
                   {/* Page Range */}
                   {pageCount > 0 && (
                     <div style={styles.rangeSection}>
+                      <div style={styles.rangeRule} />
                       <div style={styles.rangeHeader}>
                         <span style={styles.label}>Page Range</span>
                         <span style={styles.rangeValue}>
@@ -241,8 +256,8 @@ export default function HomeClient() {
                   {error && (
                     <div style={styles.errorRow}>
                       <AlertCircle
-                        size={15}
-                        style={{ color: "var(--red)", flexShrink: 0 }}
+                        size={14}
+                        style={{ color: "var(--burgundy)", flexShrink: 0 }}
                       />
                       <span style={styles.errorText}>{error}</span>
                     </div>
@@ -254,14 +269,15 @@ export default function HomeClient() {
                     disabled={!file || loading || pageRange[0] > pageRange[1]}
                     style={{
                       ...styles.generateBtn,
-                      opacity: !file || loading ? 0.5 : 1,
+                      opacity: !file || loading ? 0.45 : 1,
+                      cursor: !file || loading ? "not-allowed" : "pointer",
                     }}
-                    className="af-btn-glow"
+                    className="af-btn-primary"
                   >
                     {loading ? (
                       <>
                         <Loader2
-                          size={16}
+                          size={15}
                           className="af-spin"
                           style={{ marginRight: 8 }}
                         />
@@ -269,13 +285,13 @@ export default function HomeClient() {
                       </>
                     ) : (
                       <>
-                        <Zap size={16} style={{ marginRight: 8 }} />
+                        <Zap size={15} style={{ marginRight: 8 }} />
                         Generate Deck
                       </>
                     )}
                   </button>
 
-                  {/* Big Green Download Button - appears below Generate after generation */}
+                  {/* Download Button */}
                   {showDownload && (
                     <a
                       href={jobStatus.download_url}
@@ -283,8 +299,9 @@ export default function HomeClient() {
                       target="_blank"
                       rel="noopener noreferrer"
                       style={styles.bigDownloadBtn}
+                      className="af-btn-download"
                     >
-                      <Download size={20} style={{ marginRight: 10 }} />
+                      <Download size={16} style={{ marginRight: 8 }} />
                       Download Full Deck
                     </a>
                   )}
@@ -308,14 +325,14 @@ export default function HomeClient() {
             {/* RIGHT: Preview Area */}
             <div style={styles.rightCol}>
               {previewCards.length > 0 ? (
-                /* Flashcard Preview */
                 <div style={styles.card}>
                   <div
                     style={{ ...styles.cardHeader, ...styles.previewHeader }}
                   >
                     <div>
+                      <p style={styles.cardEyebrow}>Preview</p>
                       <h2 style={styles.cardTitle}>
-                        Preview{" "}
+                        Generated Cards{" "}
                         <span style={styles.previewCount}>
                           {previewCards.length}
                         </span>
@@ -369,7 +386,7 @@ export default function HomeClient() {
                         style={styles.navBtn}
                         className="af-nav-btn"
                       >
-                        <ChevronLeft size={16} />
+                        <ChevronLeft size={15} />
                       </button>
                       <div style={styles.dots}>
                         {previewCards.map((_, i) => (
@@ -394,40 +411,45 @@ export default function HomeClient() {
                         style={styles.navBtn}
                         className="af-nav-btn"
                       >
-                        <ChevronRight size={16} />
+                        <ChevronRight size={15} />
                       </button>
                     </div>
                   </div>
                 </div>
               ) : (
-                /* PDF Preview (shown until cards are generated) */
+                /* PDF Preview placeholder */
                 <div style={{ ...styles.card, ...styles.pdfPreviewCard }}>
                   <div style={styles.pdfPreviewContent}>
-                    <div style={styles.pdfIcon}>
-                      <FileText size={48} style={{ color: "var(--accent)" }} />
+                    <div style={styles.pdfIconWrap}>
+                      <FileText
+                        size={36}
+                        style={{ color: "var(--burgundy)" }}
+                      />
                     </div>
                     {file ? (
                       <>
                         <h3 style={styles.pdfTitle}>{file.name}</h3>
                         <p style={styles.pdfInfo}>
-                          {pageCount} pages • Selected: {pageRange[0]}–
+                          {pageCount} pages · Selected: {pageRange[0]}–
                           {pageRange[1]}
                         </p>
-                        <div style={styles.pdfHint}>
+                        <p style={styles.pdfHint}>
                           Click "Generate Deck" to create flashcards from this
                           PDF
-                        </div>
+                        </p>
                       </>
                     ) : (
                       <>
-                        <div style={styles.emptyIcon}>
-                          <FileUp
-                            size={32}
-                            style={{ color: "var(--accent)" }}
-                          />
-                        </div>
-                        <p style={styles.emptyText}>
-                          Upload a PDF to see preview
+                        <h3
+                          style={{
+                            ...styles.pdfTitle,
+                            color: "var(--rule-strong)",
+                          }}
+                        >
+                          No document uploaded
+                        </h3>
+                        <p style={styles.pdfHint}>
+                          Upload a PDF to see a preview
                         </p>
                       </>
                     )}
@@ -443,99 +465,132 @@ export default function HomeClient() {
 }
 
 const globalStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=IBM+Plex+Mono:wght@400;500&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap');
 
   :root {
-    --bg: #0d1117;
-    --surface: rgba(255,255,255,0.04);
-    --surface-hover: rgba(255,255,255,0.07);
-    --border: rgba(255,255,255,0.08);
-    --border-strong: rgba(255,255,255,0.14);
-    --text: #e8eaf0;
-    --muted: #6b7280;
-    --accent: #4f8ef7;
-    --accent-glow: rgba(79,142,247,0.35);
-    --green: #34d399;
-    --red: #f87171;
-    --yellow: #fbbf24;
+    --cream: #F5F0E8;
+    --cream-dark: #EDE6D6;
+    --ink: #1A1208;
+    --ink-soft: #3D3322;
+    --ink-muted: #7A6E5A;
+    --burgundy: #6B1F2A;
+    --burgundy-light: #8B2F3D;
+    --gold: #C4963A;
+    --rule: #C8BFA8;
+    --rule-strong: #8A7A62;
+    --white: #FDFBF7;
+    --green: #2A7A4A;
+    --red: #6B1F2A;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-
   body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: 'Crimson Pro', Georgia, serif;
   }
 
   .af-slider {
     -webkit-appearance: none;
     appearance: none;
     width: 100%;
-    height: 4px;
-    border-radius: 2px;
-    background: var(--border-strong);
+    height: 2px;
+    background: var(--rule);
     outline: none;
     cursor: pointer;
   }
   .af-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 16px; height: 16px;
+    width: 14px; height: 14px;
     border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 8px var(--accent-glow);
+    background: var(--burgundy);
+    border: 2px solid var(--cream);
+    box-shadow: 0 0 0 1px var(--burgundy);
+    cursor: pointer;
+  }
+  .af-slider::-moz-range-thumb {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--burgundy);
+    border: 2px solid var(--cream);
     cursor: pointer;
   }
 
-  .af-btn-glow:hover:not(:disabled) {
-    box-shadow: 0 0 24px var(--accent-glow) !important;
-    transform: translateY(-1px);
-  }
-  .af-btn-glow { transition: all 0.2s ease !important; }
+  .af-drop-zone:hover { border-color: var(--burgundy) !important; background: var(--cream-dark) !important; }
 
-  .af-nav-btn:hover:not(:disabled) { background: var(--surface-hover) !important; }
-  .af-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .af-btn-primary { transition: all 0.15s ease !important; }
+  .af-btn-primary:hover:not(:disabled) { background: var(--ink-soft) !important; }
 
-  .af-flashcard { transition: all 0.25s ease; }
+  .af-btn-download { transition: all 0.15s ease; }
+  .af-btn-download:hover { background: var(--ink-soft) !important; }
+
+  .af-nav-btn:hover:not(:disabled) { background: var(--cream-dark) !important; border-color: var(--rule-strong) !important; }
+  .af-nav-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+
+  .af-flashcard { transition: all 0.2s ease; }
   .af-flashcard:hover { transform: translateY(-2px); }
 
-  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
   .af-spin { animation: spin 1s linear infinite; }
 
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
 `;
 
 const styles = {
   root: {
     minHeight: "100vh",
-    background: "var(--bg)",
-    fontFamily: "'DM Sans', sans-serif",
+    background: "var(--cream)",
+    fontFamily: "'Crimson Pro', Georgia, serif",
   },
   loadingScreen: {
     minHeight: "100vh",
-    background: "var(--bg)",
+    background: "var(--cream)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
   },
-  spinner: { color: "var(--accent)" },
-  container: { maxWidth: 1100, margin: "0 auto", padding: "32px 20px" },
+  container: { maxWidth: 1200, margin: "0 auto", padding: "40px 24px 80px" },
+
+  pageHeading: { paddingBottom: 24 },
+  eyebrow: {
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 10,
+    letterSpacing: "0.15em",
+    textTransform: "uppercase",
+    color: "var(--burgundy)",
+    marginBottom: 10,
+  },
+  pageTitle: {
+    fontFamily: "'Playfair Display', Georgia, serif",
+    fontSize: "clamp(28px, 4vw, 44px)",
+    fontWeight: 900,
+    lineHeight: 1.1,
+    letterSpacing: "-0.02em",
+    color: "var(--ink)",
+  },
+  pageTitleItalic: {
+    fontStyle: "italic",
+    fontWeight: 700,
+  },
+  headingRule: {
+    borderTop: "2px solid var(--ink)",
+    marginBottom: 32,
+  },
+
   grid: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
     gap: 24,
-    "@media(maxWidth:768px)": { gridTemplateColumns: "1fr" },
   },
   leftCol: { display: "flex", flexDirection: "column", gap: 16 },
   rightCol: { display: "flex", flexDirection: "column" },
 
   card: {
-    background: "rgba(255,255,255,0.03)",
-    border: "1px solid var(--border)",
-    borderRadius: 20,
+    background: "var(--white)",
+    border: "1px solid var(--rule)",
+    borderTop: "2px solid var(--ink)",
     overflow: "hidden",
-    backdropFilter: "blur(12px)",
-    animation: "fadeIn 0.4s ease",
+    animation: "fadeIn 0.3s ease",
   },
   cardHeader: { padding: "24px 24px 0" },
   previewHeader: {
@@ -543,26 +598,40 @@ const styles = {
     alignItems: "flex-start",
     justifyContent: "space-between",
   },
-  cardTitle: {
-    fontFamily: "'Syne', sans-serif",
-    fontSize: 18,
-    fontWeight: 700,
-    color: "var(--text)",
-    letterSpacing: "-0.02em",
+  cardEyebrow: {
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 10,
+    letterSpacing: "0.15em",
+    textTransform: "uppercase",
+    color: "var(--burgundy)",
+    marginBottom: 6,
   },
-  cardSubtitle: { fontSize: 13, color: "var(--muted)", marginTop: 4 },
+  cardTitle: {
+    fontFamily: "'Playfair Display', Georgia, serif",
+    fontSize: 20,
+    fontWeight: 700,
+    color: "var(--ink)",
+    letterSpacing: "-0.01em",
+  },
+  cardSubtitle: {
+    fontFamily: "'Crimson Pro', serif",
+    fontSize: 15,
+    color: "var(--ink-muted)",
+    fontStyle: "italic",
+    marginTop: 4,
+  },
   cardBody: { padding: 24 },
 
   previewCount: {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    background: "var(--accent)",
-    color: "#fff",
-    fontSize: 11,
-    fontWeight: 700,
-    borderRadius: 6,
-    padding: "2px 7px",
+    background: "var(--burgundy)",
+    color: "var(--cream)",
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 10,
+    letterSpacing: "0.06em",
+    padding: "2px 8px",
     marginLeft: 8,
     verticalAlign: "middle",
   },
@@ -572,166 +641,202 @@ const styles = {
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    border: "1.5px dashed var(--border-strong)",
-    borderRadius: 14,
+    border: "1.5px dashed var(--rule-strong)",
     padding: "32px 20px",
     cursor: "pointer",
-    transition: "border-color 0.2s, background 0.2s",
+    transition: "border-color 0.15s, background 0.15s",
     marginBottom: 16,
+    background: "var(--cream)",
   },
   dropZoneText: {
-    fontSize: 14,
-    fontWeight: 500,
-    color: "var(--text)",
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 11,
+    letterSpacing: "0.1em",
+    textTransform: "uppercase",
+    color: "var(--ink-soft)",
     marginBottom: 4,
   },
-  dropZoneHint: { fontSize: 12, color: "var(--muted)" },
+  dropZoneHint: {
+    fontFamily: "'Crimson Pro', serif",
+    fontSize: 13,
+    color: "var(--ink-muted)",
+    fontStyle: "italic",
+  },
 
   infoRow: {
     display: "flex",
     alignItems: "center",
     gap: 8,
-    background: "rgba(52,211,153,0.08)",
-    border: "1px solid rgba(52,211,153,0.2)",
-    borderRadius: 10,
+    background: "rgba(42,122,74,0.06)",
+    borderLeft: "2px solid var(--green)",
     padding: "10px 14px",
     marginBottom: 16,
   },
-  infoText: { fontSize: 13, color: "var(--text)" },
+  infoText: {
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 11,
+    letterSpacing: "0.06em",
+    color: "var(--ink-soft)",
+  },
 
+  rangeRule: { borderTop: "1px solid var(--rule)", marginBottom: 16 },
   rangeSection: { marginBottom: 20 },
   rangeHeader: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 14,
   },
-  label: { fontSize: 13, fontWeight: 500, color: "var(--text)" },
-  rangeValue: { fontSize: 13, color: "var(--accent)", fontWeight: 600 },
+  label: {
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 10,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase",
+    color: "var(--ink-muted)",
+  },
+  rangeValue: {
+    fontFamily: "'Playfair Display', serif",
+    fontSize: 16,
+    fontWeight: 700,
+    color: "var(--burgundy)",
+  },
   sliderWrap: {
     display: "flex",
     alignItems: "center",
     gap: 12,
-    marginBottom: 10,
+    marginBottom: 12,
   },
-  sliderLabel: { fontSize: 11, color: "var(--muted)", width: 28 },
+  sliderLabel: {
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 9,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+    color: "var(--ink-muted)",
+    width: 28,
+  },
   slider: { flex: 1 },
 
   errorRow: {
     display: "flex",
     alignItems: "flex-start",
     gap: 8,
-    background: "rgba(248,113,113,0.08)",
-    border: "1px solid rgba(248,113,113,0.2)",
-    borderRadius: 10,
+    background: "rgba(107,31,42,0.05)",
+    borderLeft: "2px solid var(--burgundy)",
     padding: "10px 14px",
     marginBottom: 16,
   },
-  errorText: { fontSize: 13, color: "var(--red)" },
+  errorText: {
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 11,
+    letterSpacing: "0.04em",
+    color: "var(--burgundy)",
+  },
 
   generateBtn: {
     width: "100%",
     padding: "14px 20px",
-    borderRadius: 12,
-    background: "var(--accent)",
+    background: "var(--ink)",
     border: "none",
-    color: "#fff",
-    fontFamily: "'Syne', sans-serif",
-    fontSize: 15,
-    fontWeight: 700,
-    cursor: "pointer",
+    color: "var(--cream)",
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 11,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase",
+    fontWeight: 500,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    letterSpacing: "0.01em",
+    transition: "background 0.15s",
   },
 
-  /* Big Green Download Button */
   bigDownloadBtn: {
     width: "100%",
     marginTop: 12,
-    padding: "18px 20px",
-    borderRadius: 12,
-    background: "var(--green)",
-    color: "#fff",
-    fontFamily: "'Syne', sans-serif",
-    fontSize: 16,
-    fontWeight: 700,
+    padding: "14px 20px",
+    background: "var(--burgundy)",
+    border: "none",
+    color: "var(--cream)",
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 11,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase",
+    fontWeight: 500,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     textDecoration: "none",
-    boxShadow: "0 4px 20px rgba(52, 211, 153, 0.35)",
-    transition: "all 0.2s ease",
-  },
-  bigDownloadBtnHover: {
-    transform: "translateY(-2px)",
-    boxShadow: "0 6px 25px rgba(52, 211, 153, 0.45)",
+    transition: "background 0.15s",
   },
 
   statusBox: {
     display: "flex",
     alignItems: "center",
     gap: 10,
-    background: "var(--surface)",
-    border: "1px solid var(--border)",
-    borderRadius: 10,
-    padding: "10px 14px",
-    marginTop: 14,
+    borderTop: "1px solid var(--rule)",
+    padding: "12px 0 0",
+    marginTop: 12,
   },
   statusDot: {
-    width: 8,
-    height: 8,
+    width: 6,
+    height: 6,
     borderRadius: "50%",
     background: "var(--green)",
-    boxShadow: "0 0 8px var(--green)",
     flexShrink: 0,
   },
-  statusText: { fontSize: 13, color: "var(--muted)" },
+  statusText: {
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 10,
+    letterSpacing: "0.08em",
+    color: "var(--ink-muted)",
+  },
 
   flashcard: {
-    background: "rgba(79,142,247,0.06)",
-    border: "1px solid rgba(79,142,247,0.2)",
-    borderRadius: 16,
-    padding: 28,
+    background: "var(--cream)",
+    border: "1px solid var(--rule)",
+    borderTop: "2px solid var(--ink)",
+    padding: "28px 24px",
     cursor: "pointer",
     minHeight: 260,
     display: "flex",
     flexDirection: "column",
     marginBottom: 20,
+    transition: "all 0.2s ease",
   },
   flashcardFlipped: {
-    background: "rgba(52,211,153,0.06)",
-    border: "1px solid rgba(52,211,153,0.2)",
+    borderTopColor: "var(--burgundy)",
+    background: "rgba(107,31,42,0.03)",
   },
   flashSide: {
-    fontSize: 10,
-    fontWeight: 700,
-    letterSpacing: "0.12em",
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 9,
+    letterSpacing: "0.15em",
     textTransform: "uppercase",
-    color: "var(--muted)",
-    marginBottom: 14,
+    color: "var(--ink-muted)",
+    marginBottom: 16,
   },
   flashContent: {
-    fontSize: 16,
+    fontFamily: "'Crimson Pro', serif",
+    fontSize: 17,
     lineHeight: 1.65,
-    color: "var(--text)",
+    color: "var(--ink)",
     flex: 1,
   },
   tagsRow: { display: "flex", flexWrap: "wrap", gap: 6, marginTop: 16 },
   tag: {
-    fontSize: 11,
-    padding: "3px 10px",
-    borderRadius: 20,
-    background: "var(--surface)",
-    border: "1px solid var(--border)",
-    color: "var(--muted)",
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 9,
+    letterSpacing: "0.08em",
+    padding: "3px 9px",
+    background: "var(--cream-dark)",
+    border: "1px solid var(--rule)",
+    color: "var(--ink-muted)",
   },
   flipHint: {
-    fontSize: 11,
-    color: "var(--muted)",
+    fontFamily: "'Crimson Pro', serif",
+    fontStyle: "italic",
+    fontSize: 12,
+    color: "var(--rule-strong)",
     marginTop: 16,
-    opacity: 0.6,
   },
 
   navRow: {
@@ -743,29 +848,27 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    background: "var(--surface)",
-    border: "1px solid var(--border)",
-    color: "var(--text)",
+    width: 36,
+    height: 36,
+    background: "var(--white)",
+    border: "1px solid var(--rule)",
+    color: "var(--ink-soft)",
     cursor: "pointer",
-    transition: "background 0.2s",
+    transition: "all 0.15s",
   },
   dots: { display: "flex", gap: 6, alignItems: "center" },
   dot: {
     width: 6,
     height: 6,
     borderRadius: "50%",
-    background: "var(--border-strong)",
+    background: "var(--rule)",
     border: "none",
     cursor: "pointer",
     padding: 0,
     transition: "all 0.2s",
   },
-  dotActive: { width: 18, borderRadius: 3, background: "var(--accent)" },
+  dotActive: { width: 18, borderRadius: 2, background: "var(--burgundy)" },
 
-  /* PDF Preview Styles */
   pdfPreviewCard: {
     minHeight: 420,
     display: "flex",
@@ -774,47 +877,37 @@ const styles = {
   },
   pdfPreviewContent: {
     textAlign: "center",
-    padding: "40px 20px",
+    padding: "40px 24px",
   },
-  pdfIcon: {
-    marginBottom: 24,
+  pdfIconWrap: {
+    width: 64,
+    height: 64,
+    border: "1px solid var(--rule)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    margin: "0 auto 24px",
+    background: "var(--cream)",
   },
   pdfTitle: {
-    fontFamily: "'Syne', sans-serif",
-    fontSize: 18,
-    fontWeight: 600,
-    color: "var(--text)",
+    fontFamily: "'Playfair Display', serif",
+    fontSize: 17,
+    fontWeight: 700,
+    color: "var(--ink)",
     marginBottom: 8,
     wordBreak: "break-all",
   },
   pdfInfo: {
-    fontSize: 14,
-    color: "var(--accent)",
-    marginBottom: 24,
-  },
-  pdfHint: {
-    fontSize: 13,
-    color: "var(--muted)",
-    fontStyle: "italic",
-  },
-
-  emptyPreview: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 420,
-  },
-  emptyIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 18,
-    background: "var(--surface)",
-    border: "1px solid var(--border)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 11,
+    letterSpacing: "0.08em",
+    color: "var(--burgundy)",
     marginBottom: 16,
   },
-  emptyText: { fontSize: 14, color: "var(--muted)" },
+  pdfHint: {
+    fontFamily: "'Crimson Pro', serif",
+    fontStyle: "italic",
+    fontSize: 14,
+    color: "var(--ink-muted)",
+  },
 };
