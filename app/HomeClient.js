@@ -73,18 +73,26 @@ export default function HomeClient() {
     load();
   }, []);
 
+  const [authLoading, setAuthLoading] = useState(true);
+
   useEffect(() => {
     if (!app) return;
+
     const auth = getAuth(app);
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
+        setAuthLoading(false);
         router.push("/auth");
         return;
       }
+
       setUser(currentUser);
       const idToken = await currentUser.getIdToken(true);
       setToken(idToken);
+      setAuthLoading(false);
     });
+
     return () => unsubscribe();
   }, [router]);
 
@@ -381,7 +389,7 @@ export default function HomeClient() {
     }
   };
 
-  if (!user)
+  if (authLoading)
     return (
       <div style={styles.loadingScreen}>
         <Loader2
